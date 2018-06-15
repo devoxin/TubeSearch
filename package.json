@@ -1,0 +1,17 @@
+{
+  "name": "tubesearch",
+  "version": "1.0.2",
+  "description": "Provides basic YouTube searching functionality",
+  "main": "index.js",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "snekfetch": "^4.0.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["youtube", "searching", "search"],
+  "author": "kromatic",
+  "license": "ISC"
+}
