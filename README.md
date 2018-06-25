@@ -26,7 +26,7 @@ search('query')
           id: '74tZ-yOOPy0',
           uploader: 'Binging with Babish',
           duration: '8:27',
-          durationMs: 507000 },
+          durationMs: 507000 } ]
     */
   });
 ```
