@@ -1,6 +1,6 @@
 {
   "name": "tubesearch",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "Provides basic YouTube searching functionality",
   "main": "index.js",
   "dependencies": {
@@ -13,5 +13,9 @@
   },
   "keywords": ["youtube", "searching", "search"],
   "author": "kromatic",
-  "license": "ISC"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Devoxin/TubeSearch"
+  }
 }

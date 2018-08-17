@@ -8,21 +8,21 @@ const durationRegex = RegExp('(?:(\\d{1,2}):)?(\\d{1,2}):(\\d{2})');
  * @param {string} query The query to search for
  * @returns {Promise<Array<Object>, Error>} An array of results. Could be empty if nothing found
  */
-async function search (query) {
+async function search (query, limit) {
   const data = await get(`https://youtube.com/results?search_query=${encodeURIComponent(query)}`);
   const $ = load(data.body.toString());
 
   const results = $('.yt-lockup-video')
-    .filter((i, e) => !('data-ad-impressions' in e.attribs));
+    .filter((_, e) => !('data-ad-impressions' in e.attribs));
 
   const items = [];
 
-  const videos = $(results).each((i, el) => {
+  $(results).each((_, el) => {
     const info = $(el).find('h3.yt-lockup-title a');
     const duration = $(el).find('span.video-time').text();
     const durationMs = getDurationMs(duration);
     const uploader = $(el).find('div.yt-lockup-byline a').text();
-    const link = `https://www.youtube.com${info.attr('href')}`;
+    const link = `https://youtube.com${info.attr('href')}`;
 
     items.push({
       title: info.text(),
@@ -33,6 +33,10 @@ async function search (query) {
       durationMs
     });
   });
+
+  if (limit && Number(limit)) {
+    items.length = Number(limit);
+  }
 
   return items;
 }
