@@ -4,9 +4,9 @@ const { get } = require('snekfetch');
 const durationRegex = RegExp('(?:(\\d{1,2}):)?(\\d{1,2}):(\\d{2})');
 
 /**
- * Searches YouTube for the specified query
- * @param {string} query The query to search for
- * @returns {Promise<Array<Object>, Error>} An array of results. Could be empty if nothing found
+ * Searches YouTube for the specified query.
+ * @param {String} query The query to search for.
+ * @returns {Promise<Array<Result>, Error>} An array of results. Could be empty if nothing found.
  */
 async function search (query, limit) {
   const data = await get(`https://youtube.com/results?search_query=${encodeURIComponent(query)}`);
@@ -18,10 +18,11 @@ async function search (query, limit) {
   const items = [];
 
   $(results).each((_, el) => {
-    const info = $(el).find('h3.yt-lockup-title a');
-    const duration = $(el).find('span.video-time').text();
+    const selector = $(el);
+    const info = selector.find('h3.yt-lockup-title a');
+    const duration = selector.find('span.video-time').text();
     const durationMs = getDurationMs(duration);
-    const uploader = $(el).find('div.yt-lockup-byline a').text();
+    const uploader = selector.find('div.yt-lockup-byline a').text();
     const link = `https://youtube.com${info.attr('href')}`;
 
     items.push({
@@ -43,9 +44,9 @@ async function search (query, limit) {
 
 
 /**
- * Converts a given time-string into milliseconds
- * @param {string} timeString The string to convert to milliseconds
- * @returns {(Number|Null)} Milliseconds if successful, otherwise null
+ * Converts a given time-string into milliseconds.
+ * @param {String} timeString The string to convert to milliseconds.
+ * @returns {(Number|Null)} Milliseconds if successful, otherwise null.
  */
 function getDurationMs (timeString) {
   const match = durationRegex.exec(timeString);
@@ -64,3 +65,13 @@ function getDurationMs (timeString) {
 }
 
 module.exports = search;
+
+/**
+ * @typedef {Object} Result
+ * @property {String} title The title of the result.
+ * @property {String} link The direct URL of the result.
+ * @property {String} id The identifier of the video.
+ * @property {String} uploader The name of the channel that uploaded the result.
+ * @property {String} duration The humanized duration of the result.
+ * @property {Number} durationMs The duration in milliseconds.
+ */

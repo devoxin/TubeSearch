@@ -5,7 +5,7 @@ YouTube Search module for NodeJS
 ## Usage
 ```js
 const search = require('tubesearch');
-search('query')
+search('chicken soup')
   .then((results) => {
     // Results will either be empty (if nothing found), or will produce something similar to below
     /*
