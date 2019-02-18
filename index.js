@@ -1,11 +1,10 @@
 const { load } = require('cheerio');
 const { get } = require('snekfetch');
 
-const durationRegex = RegExp('(?:(\\d{1,2}):)?(\\d{1,2}):(\\d{2})');
-
 /**
  * Searches YouTube for the specified query.
  * @param {String} query The query to search for.
+ * @param {Number} limit The maximum amount of results to return.
  * @returns {Promise<Array<Result>, Error>} An array of results. Could be empty if nothing found.
  */
 async function search (query, limit) {
@@ -17,7 +16,7 @@ async function search (query, limit) {
 
   const items = [];
 
-  $(results).each((_, el) => {
+  results.each((_, el) => {
     const selector = $(el);
     const info = selector.find('h3.yt-lockup-title a');
     const duration = selector.find('span.video-time').text();
@@ -49,19 +48,17 @@ async function search (query, limit) {
  * @returns {(Number|Null)} Milliseconds if successful, otherwise null.
  */
 function getDurationMs (timeString) {
-  const match = durationRegex.exec(timeString);
+  const parts = timeString.split(':');
 
-  if (!match) {
-    return null;
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
+  } else if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return (minutes * 60000) + (seconds * 1000);
+  } else {
+    throw new Error(`Unexpected amount of parts in timeString, expected 2-3 but got ${parts.length}`);
   }
-
-  const hours = Number(match[1]) || 0;
-  const minutes = Number(match[2]) || 0;
-  const seconds = Number(match[3]) || 0;
-
-  const ms = (hours * 3600000) + (minutes * 60000) + (seconds * 1000); // eslint-disable-line
-
-  return ms;
 }
 
 module.exports = search;
