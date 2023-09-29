@@ -1,5 +1,15 @@
-const { load } = require('cheerio');
 const fetch = require('node-fetch');
+
+const INNERTUBE_KEY = 'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w';
+const INNERTUBE_CLIENT_CONFIG = {
+  context: {
+    client: {
+      clientName: 'ANDROID',
+      clientVersion: '17.29.34',
+      androidSdkVersion: 30
+    }
+  }
+}
 
 
 /**
@@ -9,85 +19,115 @@ const fetch = require('node-fetch');
  * @returns {Promise<Array<Video>, Error>} An array of videos. Could be empty if nothing found.
  */
 async function search (query, limit) {
-  const data = await fetch(`https://youtube.com/results?search_query=${encodeURIComponent(query)}`)
-    .then(res => res.text());
-  const $ = load(data);
+  const data = await fetch(`https://youtubei.googleapis.com/youtubei/v1/search?key=${INNERTUBE_KEY}`, {
+    method: 'post',
+    body: JSON.stringify({
+      ...INNERTUBE_CLIENT_CONFIG,
+      query,
+      params: 'EgIQAQ=='
+    }),
+    headers: {
+      'content-type': 'application/json'
+    }
+  }).then(res => res.json());
 
-  const results = $('.yt-lockup-video')
-    .filter((_, e) => !('data-ad-impressions' in e.attribs));
-
-  const items = [];
-
-  results.each((_, el) => {
-    const selector = $(el);
-    const info = selector.find('h3.yt-lockup-title a');
-    const duration = selector.find('span.video-time').text();
-    const durationMs = getDurationMs(duration);
-    const uploader = selector.find('div.yt-lockup-byline a').text();
-    const link = `https://youtube.com${info.attr('href')}`;
-
-    items.push({
-      title: info.text(),
-      link,
-      id: link.substring(link.indexOf('=') + 1),
-      uploader,
-      duration,
-      durationMs
-    });
-  });
+  const results = data.contents
+    .sectionListRenderer
+    .contents
+    .filter(item => !!item.itemSectionRenderer)
+    .flatMap(item => item.itemSectionRenderer.contents)
+    .filter(Boolean)
+    .map(extractSearchResult)
 
   if (limit && Number(limit)) {
-    items.length = Number(limit);
+    results.length = Number(limit);
   }
 
-  return items;
+  return results;
+}
+
+function extractSearchResult (item) {
+  const details = item.compactVideoRenderer;
+
+  if (!details) {
+    return undefined;
+  }
+
+  const isLiveStream = !details.lengthText;
+  const duration = isLiveStream ? 'LIVE' : details.lengthText.runs[0].text;
+
+  return {
+    id: details.videoId,
+    title: details.title.runs[0].text,
+    uploader: details.longBylineText.runs[0].text,
+    duration,
+    durationMs: isLiveStream ? -1 : getDurationMs(duration),
+    link: `https://www.youtube.com/watch?v=${details.videoId}`,
+    isLiveStream
+  }
 }
 
 /**
  * Retrieves the videos of the playlist with the given identifier.
- * Limited to the first 100 videos.
+ * Limited to the first 'page' returned by YouTube.
  * @param {String} identifier The playlist's unique identifier.
  * @param {Number} limit The maximum amount of videos to return.
- * @returns {Promise<Array<Video>, Error>} An array of videos. Could be empty if nothing found.
+ * @returns {Promise<Array<PlaylistVideo>, Error>} An array of videos. Could be empty if nothing found.
  */
 async function playlist (identifier, limit) {
-  const data = await fetch(`https://youtube.com/playlist?list=${identifier}`)
-    .then(res => res.text());
-  const $ = load(data);
+  const data = await fetch(`https://youtubei.googleapis.com/youtubei/v1/browse`, {
+    method: 'post',
+    body: JSON.stringify({
+      ...INNERTUBE_CLIENT_CONFIG,
+      browseId: 'VL' + identifier,
+    }),
+    headers: {
+      'content-type': 'application/json'
+    }
+  }).then(res => res.json());
 
-  const results = $('.pl-video')
-  const items = [];
+  const playlistVideoList = data.contents
+    .singleColumnBrowseResultsRenderer
+    .tabs[0]
+    .tabRenderer
+    .content
+    .sectionListRenderer
+    .contents[0]
+    .playlistVideoListRenderer
+    .contents;
 
-  results.each((_, el) => {
-    const selector = $(el);
-    const info = selector.find('.pl-video-title-link');
-    const duration = selector.find('.pl-video-time .timestamp').text();
-    const durationMs = getDurationMs(duration);
-    const uploader = selector.find('.pl-video-owner a').text();
-    const link = `https://youtube.com${info.attr('href')}`;
-
-    items.push({
-      title: info.text().trim(),
-      link,
-      id: link.substring(link.indexOf('=') + 1, link.indexOf('&')),
-      uploader,
-      duration,
-      durationMs
-    });
-  });
-
-  if (limit && Number(limit)) {
-    items.length = Number(limit);
+  if (!playlistVideoList) {
+    return [];
   }
 
-  return items;
+  const results = playlistVideoList.filter(item => !!item.playlistVideoRenderer)
+    .filter(item => !!item.playlistVideoRenderer.isPlayable)
+    .filter(item => !!item.playlistVideoRenderer.shortBylineText)
+    .map(extractPlaylistVideo)
+
+  if (limit && Number(limit)) {
+    results.length = Number(limit);
+  }
+
+  return results;
 }
 
+function extractPlaylistVideo (item) {
+  const details = item.playlistVideoRenderer;
+
+  return {
+    id: details.videoId,
+    title: details.title.simpleText || details.title.runs[0].text,
+    uploader: details.shortBylineText.runs[0].text,
+    durationMs: details.lengthSeconds ? (details.lengthSeconds * 1000) : -1,
+    link: `https://www.youtube.com/watch?v=${details.videoId}`
+  }
+}
 
 /**
  * Converts a given time-string into milliseconds.
  * @param {String} timeString The string to convert to milliseconds.
- * @returns {(Number|Null)} Milliseconds if successful, otherwise null.
+ * @returns {Number} Milliseconds if successful, otherwise null.
  */
 function getDurationMs (timeString) {
   const parts = timeString.split(':').map(Number);
@@ -114,6 +154,16 @@ module.exports = {
  * @property {String} link The direct URL to the video.
  * @property {String} id The identifier of the video.
  * @property {String} uploader The name of the channel that uploaded the video.
- * @property {String} duration The humanized duration of the video.
- * @property {Number} durationMs The duration in milliseconds.
+ * @property {String} duration The humanized duration of the video. Can be "" for livestreams.
+ * @property {Number} durationMs The duration in milliseconds. Can be -1 for livestreams.
+ * @property {Boolean} isLiveStream Whether the video is a livestream.
+ */
+
+/**
+ * @typedef {Object} PlaylistVideo
+ * @property {String} title The title of the video.
+ * @property {String} link The direct URL to the video.
+ * @property {String} id The identifier of the video.
+ * @property {String} uploader The name of the channel that uploaded the video.
+ * @property {Number} durationMs The duration in milliseconds. Can be -1 for livestreams.
  */

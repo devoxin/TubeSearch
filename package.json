@@ -1,13 +1,11 @@
 {
   "name": "tubesearch",
-  "version": "1.1.0",
-  "description": "Provides basic YouTube searching functionality",
+  "version": "2.0.0",
+  "description": "Provides basic YouTube searching functionality.",
   "main": "index.js",
   "dependencies": {
-    "cheerio": "^1.0.0-rc.3",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.7.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
