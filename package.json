@@ -1,6 +1,6 @@
 {
   "name": "tubesearch",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Provides basic YouTube searching functionality.",
   "main": "index.js",
   "dependencies": {

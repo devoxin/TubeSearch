@@ -37,6 +37,7 @@ async function search (query, limit) {
     .filter(item => !!item.itemSectionRenderer)
     .flatMap(item => item.itemSectionRenderer.contents)
     .filter(Boolean)
+    .filter(item => Boolean(item.compactVideoRenderer))
     .map(extractSearchResult)
 
   if (limit && Number(limit)) {
